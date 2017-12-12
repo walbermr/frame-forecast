@@ -1,0 +1,14 @@
+name: learn
+channels:
+- defaults
+dependencies:
+- python=3.6
+- numpy
+- pandas
+- scikit-learn
+- matplotlib
+- tensorflow
+- keras
+- seaborn
+prefix: /anaconda3/envs/learn
+
