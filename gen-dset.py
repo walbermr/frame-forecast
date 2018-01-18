@@ -4,7 +4,7 @@ from tqdm import tqdm, trange
 
 random.seed(13)
 
-def gen_dataset(prediction_size, dataset): #generates a true and false sequence from real data
+def lstm_dset(prediction_size, dataset): #generates a true and false sequence from real data
     df_ = {'true':[], 'false':[]}
     keys = dataset.keys()
 
@@ -44,7 +44,7 @@ def main():
     dataset = pd.read_csv(path, names=headers)
     dataset = dataset.sort_values(by=['tagid', 'timestamp'])
     dataset = dataset.loc[:, ['tagid', 'x_pos', 'y_pos', 'heading', 'direction', 'speed']]
-    dataset = pd.DataFrame(gen_dataset(1, dataset))
+    dataset = pd.DataFrame(lstm_dset(1, dataset))
 
     print(dataset)
 
