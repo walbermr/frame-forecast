@@ -10,5 +10,7 @@ dependencies:
 - tensorflow
 - keras
 - seaborn
+- imbalanced-learn
+- tqdm
 prefix: /anaconda3/envs/learn
 

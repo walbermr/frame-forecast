@@ -28,7 +28,7 @@ def main():
 	#load and plot dset
 	headers = ["timestamp", "tagid", "x_pos", "y_pos", "heading", "direction", "energy", "speed", "total_distance"]
 	print("Reading dataset...")
-	dataset = DataSet("./dataset/2013-11-03_tromso_stromsgodset_raw_first.csv", headers, UniformSampling)
+	dataset = DataSet("./dataset/2013-11-03_tromso_stromsgodset_raw_first.csv", headers, UniformSampling, plot=False)
 	print("Ploting dataset...")
 	print(dataset)
 

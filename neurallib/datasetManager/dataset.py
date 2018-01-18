@@ -7,16 +7,15 @@ from sklearn.preprocessing import StandardScaler
 from neurallib.Util import plot_scatter_matrix, plot_boxPlot
 
 class DataSet:
-	def __init__(self, path, headers, sampling):
+	def __init__(self, path, headers, sampling, plot):
 		self.path = path
 		self.headers = headers
 
 		main = pd.read_csv(self.path, names = headers)
 		main.drop_duplicates(inplace = True)
 
-		if(PLOT):
-			plot_scatter_matrix(main, 'target')
-			plot_boxPlot(main)
+		plot_scatter_matrix(main, 'target')
+		plot_boxPlot(main)
 
 		df1 = select_target(main, 'target', 0)
 		df2 = select_target(main, 'target', 1)
