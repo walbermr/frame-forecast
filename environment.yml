@@ -7,10 +7,10 @@ dependencies:
 - pandas
 - scikit-learn
 - matplotlib
-- tensorflow
+- tensorflow-gpu
 - keras
 - seaborn
 - imbalanced-learn
-- tqdm
+- keras-tqdm
 prefix: /anaconda3/envs/learn
 
