@@ -73,3 +73,28 @@ def plot_boxPlot(dset):
 	
 	plt.savefig("./results/dset_boxplot.png")
 
+def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler):
+	mpl.style.use('default')
+	fig, ax = plt.subplots()
+	ax.grid(False)
+
+	# shift train predictions for plotting
+	train_predict_plot = np.empty_like(dset_full)
+	train_predict_plot[:, :] = np.nan
+	train_predict_plot[look_back:len(train_predict)+look_back, :] = train_predict
+	# shift validation predictions for plotting
+	val_predict_plot = np.empty_like(dset_full)
+	val_predict_plot[:, :] = np.nan
+	val_predict_plot[len(train_predict)+(look_back)+1:len(val_predict)+len(train_predict)+(look_back)+1, :] = val_predict
+	# shift test predictions for plotting
+	test_predict_plot = np.empty_like(dset_full)
+	test_predict_plot[:, :] = np.nan
+	test_predict_plot[len(dset_full)-len(test_predict):len(dset_full), :] = test_predict
+	# plot baseline and predictions
+	plt.plot(scaler.inverse_transform(dset_full))
+	plt.plot(train_predict_plot)
+	plt.plot(val_predict_plot)
+	plt.plot(test_predict_plot)
+
+	plt.savefig("./results/series_plot.png")
+	plt.show()
