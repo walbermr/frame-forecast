@@ -32,9 +32,10 @@ class NeuralNetworkGenerator:
 			qtd_archs = f.readline()
 			for _ in range(0, int(qtd_archs)):
 				activation, regularization = f.readline().split(" ")
+				activation = None if(activation == 'None') else activation.replace('\n', '')
 				layers = f.readline().split(" ")
 				self.architectures.append({'regularization' : float(regularization),
-										   'activation' : activation.replace('\n', ''),
+										   'activation' : activation,
 				                           'layers' : list(map(int, layers))
 				                           })
 
@@ -64,7 +65,7 @@ class NeuralNetworkGenerator:
 				model.add(Dense(arch['layers'][i], activation=arch['activation'], activity_regularizer=l2(arch['regularization'])))
 
 			else:
-				model.add(Dense(arch['layers'][i], activation = 'sigmoid'))
+				model.add(Dense(arch['layers'][i]))
 		return model
 
 
@@ -77,7 +78,8 @@ class NeuralNetworkGenerator:
 			model.summary()
 
 			# Compile model.
-			model.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+			#model.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+			model.compile(loss = 'mean_squared_error', optimizer = 'adam')
 
 			# Get dataset variables.
 			dset = dataset.get_dataset()

@@ -73,7 +73,9 @@ def plot_boxPlot(dset):
 	
 	plt.savefig("./results/dset_boxplot.png")
 
-def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler):
+def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler, dimension='x'):
+	print("Plotting serie curve...")
+
 	mpl.style.use('default')
 	fig, ax = plt.subplots()
 	ax.grid(False)
@@ -85,7 +87,7 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 	# shift validation predictions for plotting
 	val_predict_plot = np.empty_like(dset_full)
 	val_predict_plot[:, :] = np.nan
-	val_predict_plot[len(train_predict)+(look_back)+1:len(val_predict)+len(train_predict)+(look_back)+1, :] = val_predict
+	val_predict_plot[len(train_predict)+(look_back):len(val_predict)+len(train_predict)+(look_back), :] = val_predict
 	# shift test predictions for plotting
 	test_predict_plot = np.empty_like(dset_full)
 	test_predict_plot[:, :] = np.nan
@@ -96,5 +98,16 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 	plt.plot(val_predict_plot)
 	plt.plot(test_predict_plot)
 
-	plt.savefig("./results/series_plot.png")
-	plt.show()
+	#plt.show()
+	file = dimension + "_serie.png"
+	if arch_idx:
+		file = "arch_" + str(arch_idx) + "_" + file
+
+	file = "results/" + file
+
+	fig.savefig(file)
+
+def plot_2d_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler):
+	print("Plotting 2D serie curve...")
+	mpl.style.use('default')
+	#TODO
