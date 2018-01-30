@@ -1,5 +1,5 @@
 {
-    "tagids": [9, 10],
+    "tagids": [9],
     "keys": [
         "x_pos",
         "y_pos"

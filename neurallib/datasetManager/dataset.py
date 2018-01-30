@@ -183,10 +183,12 @@ class DataSet:
 		X_val, y_val = self.__create_lookback_frame(val, look_back)
 		X_test, y_test = self.__create_lookback_frame(test, look_back)
 
-		print(X_train.shape)
+		X_train = np.reshape(X_train[0], (X_train.shape[2], X_train.shape[1], X_train.shape[3]))
+		X_val = np.reshape(X_val[0], (X_val.shape[2], X_val.shape[1], X_val.shape[3]))
+		X_test = np.reshape(X_test[0], (X_test.shape[2], X_test.shape[1], X_test.shape[3]))
 
-		# X_train = np.reshape(X_train, (X_train.shape[2], X_train.shape[0], X_train.shape[1], X_train.shape[3]))
-		# X_val = np.reshape(X_val, (X_val.shape[2], X_val.shape[0], X_val.shape[1], X_val.shape[3]))
-		# X_test = np.reshape(X_test, (X_test.shape[2], X_test.shape[0], X_test.shape[1], X_test.shape[3]))
+		y_train = np.reshape(y_train[0], (y_train.shape[2], y_train.shape[1]))
+		y_val = np.reshape(y_val[0], (y_val.shape[2], y_val.shape[1]))
+		y_test = np.reshape(y_test[0], (y_test.shape[2], y_test.shape[1]))
 
 		return self.__create_spl_dframe(X_train, y_train, X_val, y_val, X_test, y_test), scalers

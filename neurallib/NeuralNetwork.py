@@ -58,7 +58,7 @@ class NeuralNetworkGenerator:
 		model = Sequential()
 		for i in range(len(arch['layers'])):
 			if i == 0:
-				model.add(LSTM(arch['layers'][i], input_shape=(1, self.__look_back)))
+				model.add(LSTM(arch['layers'][i], input_shape=(2, self.__look_back)))
 				i += 1
 
 			elif i < len(arch['layers']) - 1:
