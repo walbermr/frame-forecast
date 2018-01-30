@@ -36,14 +36,31 @@ class DataSet:
 			self.dataframe = []
 			self.scalers = []
 
-			for tag in selection.tagids:
-				dataframe_slice = (main[main.tagid == selection.tagid])
+			__min_size = 0
+
+			for tag in selection["tagids"]:
+				dataframe_slice = main[main.tagid == tag]
 				d_set_aux = []
-				for key in selection.keys:
-					d_set_aux.append(list(map(lambda x: [x], dataframe_slice[key].values)))
+				for key in selection["keys"]:
+					list_to_append = list(dataframe_slice[key].values)
+					if __min_size == 0:
+						__min_size = len(list_to_append)
+
+					elif len(list_to_append) - __min_size > 0:
+						size = len(list_to_append)
+						for i in range(size-__min_size):
+							list_to_append.pop()
+
+					elif __min_size - len(list_to_append) > 0:
+						size = len(list_to_append)
+						for i in range(size-__min_size):
+							list_to_append = list_to_append.append(0)
+
+					list_to_append = list(map(lambda x: [x], list_to_append))
+					d_set_aux.append(list_to_append)
 				self.dataframe.append(d_set_aux)
 
-			self.dataframe, self.scalers = series_dataset(self.dataframe, look_back)
+			self.dataframe, self.scalers = self.series_dataset(self.dataframe, look_back)
 
 	def __create_spl_dframe(self, a, b, c, d, e, f):
 		return {'X_train': a,
@@ -104,43 +121,50 @@ class DataSet:
 		return self.dataframe
 
 	def __create_lookback_frame(self, data, look_back):
+		shape = data.shape
 		dataX, dataY = [], []
-		for i in range(len(data)-look_back-1):
-			dataX.append(data[i:(i+look_back), 0])
-			dataY.append(data[i+look_back, 0])
-			
+		if(len(shape) == 2):
+			for i in range(len(data)-look_back-1):
+				dataX.append(data[i:(i+look_back), 0])
+				dataY.append(data[i+look_back, 0])
+		else:
+			for i in range(shape[0]):
+				a, b = self.__create_lookback_frame(data[i], look_back)
+				dataX.append(a)
+				dataY.append(b)
+
 		return np.array(dataX), np.array(dataY)
 
 	def __normalize_multidimentional_series(self, dataset, shape):
-		if(len(shape) == 1):
+		if(len(shape) == 2):
 			#return normalized
 			scaler = MinMaxScaler(feature_range=(0, 1))
 			dataset = scaler.fit_transform(dataset)
-			return dataset, scaler
+			return np.array(dataset), scaler
 		else:
 			dataset_normalized = []
 			scalers = []
-			for i in range(size[0]):
-				ret = self.__normalize_multidimentional_series(dataset[i], shape[1:])
-				dataset_normalized.append(ret[0])
-				scalers.append(ret[1])
-			return dataset_normalized, scalers
+			for i in range(shape[0]):
+				ret0, ret1 = self.__normalize_multidimentional_series(dataset[i], shape[1:])
+				dataset_normalized.append(ret0)
+				scalers.append(ret1)
+			return np.array(dataset_normalized), scalers
 
 	def __split_multidimentional_series(self, dataset, interval):
 		shape = dataset.shape
-		if(len(shape) == 1):
-			return dataset[interval[0]:interval[1]]
+		if(len(shape) == 2):
+			return np.array(dataset[interval[0]:interval[1]])
 		else:
 			dset_aux = []
 			for i in range(shape[0]):
 				dset_aux.append(self.__split_multidimentional_series(dataset[i], interval))
-			return dset_aux
+			return np.array(dset_aux)
 
 	def series_dataset(self, dataset, look_back):
 		dataset = np.array(dataset)
 		scalers = []
 		dataset_shape = dataset.shape
-		time_steps = dataset_shape[len(dataset_shape)-1:][0]
+		time_steps = dataset_shape[len(dataset_shape)-2:][0]
 
 		#normalize the dataset for each sample and feature
 		dataset, scalers = self.__normalize_multidimentional_series(dataset, dataset_shape)
@@ -159,9 +183,10 @@ class DataSet:
 		X_val, y_val = self.__create_lookback_frame(val, look_back)
 		X_test, y_test = self.__create_lookback_frame(test, look_back)
 
-		# reshape input to be [samples, time steps, features]
-		X_train = np.reshape(X_train, (X_train.shape[0], 1, X_train.shape[1]))
-		X_val = np.reshape(X_val, (X_val.shape[0], 1, X_val.shape[1]))
-		X_test = np.reshape(X_test, (X_test.shape[0], 1, X_test.shape[1]))
+		print(X_train.shape)
 
-		return self.__create_spl_dframe(X_train, y_train, X_val, y_val, X_test, y_test), scaler
+		# X_train = np.reshape(X_train, (X_train.shape[2], X_train.shape[0], X_train.shape[1], X_train.shape[3]))
+		# X_val = np.reshape(X_val, (X_val.shape[2], X_val.shape[0], X_val.shape[1], X_val.shape[3]))
+		# X_test = np.reshape(X_test, (X_test.shape[2], X_test.shape[0], X_test.shape[1], X_test.shape[3]))
+
+		return self.__create_spl_dframe(X_train, y_train, X_val, y_val, X_test, y_test), scalers
