@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 from neurallib.datasetManager.dataframes import *
@@ -31,12 +32,18 @@ class DataSet:
 			self.dataframe = self.concatenate_and_shuffle_dataset(df1, df2)
 
 		elif(type == 'series'):
-			main = main[main.tagid == 9]	#get specific tag
-			d_set_aux = {}
-			for key in self.headers:
-				d_set_aux[key] = list(map(lambda x: [x], main[key].values))
+			selection = self.__get_selection()
+			self.dataframe = []
+			self.scalers = []
 
-			self.dataframe, self.scaler = self.series_dataset(d_set_aux['x_pos'], look_back)
+			for tag in selection.tagids:
+				dataframe_slice = (main[main.tagid == selection.tagid])
+				d_set_aux = []
+				for key in selection.keys:
+					d_set_aux.append(list(map(lambda x: [x], dataframe_slice[key].values)))
+				self.dataframe.append(d_set_aux)
+
+			self.dataframe, self.scalers = series_dataset(self.dataframe, look_back)
 
 	def __create_spl_dframe(self, a, b, c, d, e, f):
 		return {'X_train': a,
@@ -45,6 +52,11 @@ class DataSet:
 				'y_test': d,
 				'X_val': e,
 				'y_val': f}
+	
+	def __get_selection(self):
+		with open("./input/dset_select.txt") as f:
+			data = json.loads(f.read())
+			return data
 
 	def split_dataframe(self, df):
 		X = df.iloc[:, :-1].values
@@ -99,19 +111,50 @@ class DataSet:
 			
 		return np.array(dataX), np.array(dataY)
 
-	def series_dataset(self, dataset, look_back):
-		#normalize the dataset
-		scaler = MinMaxScaler(feature_range=(0, 1))
-		dataset = scaler.fit_transform(dataset)
-		# split into train and test sets
-		train_size = int(len(dataset) * 0.50)
-		val_size = int(len(dataset) * 0.25)
-		test_size = int(len(dataset) * 0.25)
-		
-		train, val, test = dataset[0:train_size,:],\
-		dataset[train_size:train_size+val_size,:],\
-		dataset[train_size+val_size:len(dataset),:]
+	def __normalize_multidimentional_series(self, dataset, shape):
+		if(len(shape) == 1):
+			#return normalized
+			scaler = MinMaxScaler(feature_range=(0, 1))
+			dataset = scaler.fit_transform(dataset)
+			return dataset, scaler
+		else:
+			dataset_normalized = []
+			scalers = []
+			for i in range(size[0]):
+				ret = self.__normalize_multidimentional_series(dataset[i], shape[1:])
+				dataset_normalized.append(ret[0])
+				scalers.append(ret[1])
+			return dataset_normalized, scalers
 
+	def __split_multidimentional_series(self, dataset, interval):
+		shape = dataset.shape
+		if(len(shape) == 1):
+			return dataset[interval[0]:interval[1]]
+		else:
+			dset_aux = []
+			for i in range(shape[0]):
+				dset_aux.append(self.__split_multidimentional_series(dataset[i], interval))
+			return dset_aux
+
+	def series_dataset(self, dataset, look_back):
+		dataset = np.array(dataset)
+		scalers = []
+		dataset_shape = dataset.shape
+		time_steps = dataset_shape[len(dataset_shape)-1:][0]
+
+		#normalize the dataset for each sample and feature
+		dataset, scalers = self.__normalize_multidimentional_series(dataset, dataset_shape)
+
+		# split into train and test sets
+		train_size = int(time_steps * 0.50)
+		val_size = int(time_steps * 0.25)
+		test_size = int(time_steps * 0.25)
+
+		train, val, test = self.__split_multidimentional_series(dataset, (0, train_size)),\
+		self.__split_multidimentional_series(dataset, (train_size,train_size+val_size)),\
+		self.__split_multidimentional_series(dataset, (train_size+val_size,time_steps))
+
+		#create lookback
 		X_train, y_train = self.__create_lookback_frame(train, look_back)
 		X_val, y_val = self.__create_lookback_frame(val, look_back)
 		X_test, y_test = self.__create_lookback_frame(test, look_back)
