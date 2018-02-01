@@ -1,9 +1,14 @@
 import numpy as np
 from sklearn.metrics import roc_curve
 
+import sys, os
 import warnings # current version of seaborn generates a bunch of warnings that we'll ignore
+import matplotlib
 warnings.filterwarnings("ignore")
+
 import seaborn as sns
+matplotlib.use("Agg")
+import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import matplotlib.style
 import matplotlib as mpl
@@ -73,7 +78,7 @@ def plot_boxPlot(dset):
 	
 	plt.savefig("./results/dset_boxplot.png")
 
-def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler, dimension='x'):
+def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler, dimension='x', arch_idx=None):
 	print("Plotting serie curve...")
 
 	mpl.style.use('default')
@@ -93,7 +98,7 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 	test_predict_plot[:, :] = np.nan
 	test_predict_plot[len(dset_full)-len(test_predict):len(dset_full), :] = test_predict
 	# plot baseline and predictions
-	plt.plot(scaler.inverse_transform(dset_full))
+	plt.plot(dset_full)
 	plt.plot(train_predict_plot)
 	plt.plot(val_predict_plot)
 	plt.plot(test_predict_plot)
@@ -107,7 +112,70 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 
 	fig.savefig(file)
 
-def plot_2d_series(dset_full, train_predict, val_predict, test_predict, look_back, scaler):
-	print("Plotting 2D serie curve...")
-	mpl.style.use('default')
-	#TODO
+def ouput_series_file(data, file_path):
+	file = open(file_path, 'w')
+	file.write(str(data))
+	file.close()
+
+# code gently given by marcelsan
+def navigate_all_files(root_path, patterns):
+    """
+    A generator function that iterates all files that matches the given patterns
+    from the root_path.
+    """
+    for root, dirs, files in os.walk(root_path):
+        for pattern in patterns:
+            for filename in fnmatch.filter(files, pattern):
+                yield os.path.join(root, filename)
+
+def get_all_files(root_path, patterns):
+    """
+    Returns a list of all files that matches the given patterns from the
+    root_path.
+    """
+    ret = []
+    for filepath in navigate_all_files(root_path, patterns):
+        ret.append(filepath)
+    return ret
+
+def render_frame(num, data, line):
+    xyz_file = open(files[num])
+    
+    _x = []
+    _y = []
+
+    for xyz in xyz_file:   
+        _x.append(float(xyz.split()[0]))
+        _y.append(float(xyz.split()[1]))
+
+    line.set_data(_x, _y)
+    xyz_file.close()
+
+    return line,
+
+def make_video_from_series(output_path=""):
+	# Simulation Path
+	print("Creating video...")
+	path = output_path
+	output_name = output_path + 'series_result.mp4'
+	files = get_all_files(path, "*.xyz")
+	size_files = len(files)
+
+	# Set up formatting for the movie files
+	Writer = animation.writers['ffmpeg']
+	writer = Writer(fps=20, bitrate=1800)
+
+	fig1 = plt.figure()
+
+	data = []
+	l, = plt.plot([], [], 'ro')
+
+	plt.xlim(0, 1)
+	plt.ylim(0, 1)
+	plt.xlabel('x')
+	plt.title('Simulation Result')
+
+	line_ani = animation.FuncAnimation(fig1, render_frame, size_files, fargs=(data, l),
+									interval=50, blit=True)
+
+	line_ani.save(output_name, writer=writer)

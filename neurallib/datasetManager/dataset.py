@@ -7,6 +7,11 @@ from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from neurallib.Util import plot_scatter_matrix, plot_boxPlot
 
+
+import matplotlib.pyplot as plt
+import matplotlib.style
+import matplotlib as mpl
+
 class DataSet:
 	def __init__(self, path, headers, sampling=None, type='table', look_back=1):
 		self.path = path
@@ -32,16 +37,16 @@ class DataSet:
 			self.dataframe = self.concatenate_and_shuffle_dataset(df1, df2)
 
 		elif(type == 'series'):
-			selection = self.__get_selection()
+			self.selection = self.__get_selection()
 			self.dataframe = []
 			self.scalers = []
 
 			__min_size = 0
 
-			for tag in selection["tagids"]:
+			for tag in self.selection["tagids"]:
 				dataframe_slice = main[main.tagid == tag]
 				d_set_aux = []
-				for key in selection["keys"]:
+				for key in self.selection["keys"]:
 					list_to_append = list(dataframe_slice[key].values)
 					if __min_size == 0:
 						__min_size = len(list_to_append)
@@ -167,28 +172,38 @@ class DataSet:
 		time_steps = dataset_shape[len(dataset_shape)-2:][0]
 
 		#normalize the dataset for each sample and feature
-		dataset, scalers = self.__normalize_multidimentional_series(dataset, dataset_shape)
+		#dataset, scalers = self.__normalize_multidimentional_series(dataset, dataset_shape)
 
 		# split into train and test sets
 		train_size = int(time_steps * 0.50)
-		val_size = int(time_steps * 0.25)
 		test_size = int(time_steps * 0.25)
+		val_size = int(time_steps * 0.25)
 
-		train, val, test = self.__split_multidimentional_series(dataset, (0, train_size)),\
+		train, test, val = self.__split_multidimentional_series(dataset, (0, train_size)),\
 		self.__split_multidimentional_series(dataset, (train_size,train_size+val_size)),\
 		self.__split_multidimentional_series(dataset, (train_size+val_size,time_steps))
 
-		#create lookback
+		# create lookback frame
 		X_train, y_train = self.__create_lookback_frame(train, look_back)
-		X_val, y_val = self.__create_lookback_frame(val, look_back)
 		X_test, y_test = self.__create_lookback_frame(test, look_back)
+		X_val, y_val = self.__create_lookback_frame(val, look_back)
 
-		X_train = np.reshape(X_train[0], (X_train.shape[2], X_train.shape[1], X_train.shape[3]))
-		X_val = np.reshape(X_val[0], (X_val.shape[2], X_val.shape[1], X_val.shape[3]))
-		X_test = np.reshape(X_test[0], (X_test.shape[2], X_test.shape[1], X_test.shape[3]))
+		# actually is getting only one player from dataset
+		X_train = X_train[0]
+		X_test = X_test[0]
+		X_val = X_val[0]
 
-		y_train = np.reshape(y_train[0], (y_train.shape[2], y_train.shape[1]))
-		y_val = np.reshape(y_val[0], (y_val.shape[2], y_val.shape[1]))
-		y_test = np.reshape(y_test[0], (y_test.shape[2], y_test.shape[1]))
+		y_train = y_train[0]
+		y_test = y_test[0]
+		y_val = y_val[0]
 
-		return self.__create_spl_dframe(X_train, y_train, X_val, y_val, X_test, y_test), scalers
+		# reshape dataset
+		X_train = np.array([X_train[:,i] for i in range(X_train.shape[1])])
+		X_test = np.array([X_test[:,i] for i in range(X_test.shape[1])])
+		X_val = np.array([X_val[:,i] for i in range(X_val.shape[1])])
+
+		y_train = np.array([y_train[:,i] for i in range(y_train.shape[1])])
+		y_test = np.array([y_test[:,i] for i in range(y_test.shape[1])])
+		y_val = np.array([y_val[:,i] for i in range(y_val.shape[1])])
+
+		return self.__create_spl_dframe(X_train, y_train, X_test, y_test, X_val, y_val), scalers
