@@ -1,0 +1,7 @@
+{
+    "tagids": [9],
+    "keys": [
+        "x_pos",
+        "y_pos"
+    ]
+}
