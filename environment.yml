@@ -13,6 +13,7 @@ dependencies:
 - keras
 - seaborn
 - pip:
+  - ffmpeg
   - imbalanced-learn
 prefix: /anaconda3/envs/learn
 

@@ -1,17 +1,17 @@
 import numpy as np
 from sklearn.metrics import roc_curve
 
-import sys, os
+import sys, os, fnmatch, json
 import warnings # current version of seaborn generates a bunch of warnings that we'll ignore
-import matplotlib
+
 warnings.filterwarnings("ignore")
 
 import seaborn as sns
-matplotlib.use("Agg")
+import matplotlib as mpl
+mpl.use("Agg")
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import matplotlib.style
-import matplotlib as mpl
 
 
 def extract_final_losses(history):
@@ -99,9 +99,9 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 	test_predict_plot[len(dset_full)-len(test_predict):len(dset_full), :] = test_predict
 	# plot baseline and predictions
 	plt.plot(dset_full)
-	plt.plot(train_predict_plot)
-	plt.plot(val_predict_plot)
-	plt.plot(test_predict_plot)
+	plt.plot(train_predict_plot, '--')
+	plt.plot(val_predict_plot, '--')
+	plt.plot(test_predict_plot, '--')
 
 	#plt.show()
 	file = dimension + "_serie.png"
@@ -113,11 +113,15 @@ def plot_series(dset_full, train_predict, val_predict, test_predict, look_back, 
 	fig.savefig(file)
 
 def ouput_series_file(data, file_path):
+	if not data.shape[0] == 2:
+		data = np.array([data[:,0], data[:,1]])
+	data = data.tolist()
+	#data = [[data[0][i] for i in range(10)], [data[1][i] for i in range(10)]]
 	file = open(file_path, 'w')
 	file.write(str(data))
 	file.close()
 
-# code gently given by marcelsan
+# code gently given by marcelsan #
 def navigate_all_files(root_path, patterns):
     """
     A generator function that iterates all files that matches the given patterns
@@ -137,21 +141,11 @@ def get_all_files(root_path, patterns):
     for filepath in navigate_all_files(root_path, patterns):
         ret.append(filepath)
     return ret
-
-def render_frame(num, data, line):
-    xyz_file = open(files[num])
-    
-    _x = []
-    _y = []
-
-    for xyz in xyz_file:   
-        _x.append(float(xyz.split()[0]))
-        _y.append(float(xyz.split()[1]))
-
-    line.set_data(_x, _y)
-    xyz_file.close()
-
-    return line,
+##################################
+def render_frame(i, files, d):
+	d.set_data([f[0][i] for f in files],
+				[f[1][i] for f in files])
+	return d,
 
 def make_video_from_series(output_path=""):
 	# Simulation Path
@@ -159,23 +153,19 @@ def make_video_from_series(output_path=""):
 	path = output_path
 	output_name = output_path + 'series_result.mp4'
 	files = get_all_files(path, "*.xyz")
-	size_files = len(files)
 
-	# Set up formatting for the movie files
 	Writer = animation.writers['ffmpeg']
-	writer = Writer(fps=20, bitrate=1800)
+	writer = Writer(fps=200, bitrate=1200)
 
+	files = [open(f) for f in files]
+	data = np.array([json.loads(f.read()) for f in files])
 	fig1 = plt.figure()
+	ax = plt.axes(xlim=(0, 105), ylim=(0, 68))
 
-	data = []
-	l, = plt.plot([], [], 'ro')
+	d, = ax.plot([d[0][0] for d in data], [d[1][0] for d in data], 'r.')
 
-	plt.xlim(0, 1)
-	plt.ylim(0, 1)
-	plt.xlabel('x')
-	plt.title('Simulation Result')
+	line_ani = animation.FuncAnimation(fig1, render_frame, frames=data.shape[2], fargs=(data, d), 
+											interval=5, blit=True, save_count=0, repeat=False)
 
-	line_ani = animation.FuncAnimation(fig1, render_frame, size_files, fargs=(data, l),
-									interval=50, blit=True)
-
+	#plt.show()
 	line_ani.save(output_name, writer=writer)

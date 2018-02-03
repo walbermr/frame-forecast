@@ -134,8 +134,8 @@ class NeuralNetworkGenerator:
 				# generate output and result files
 				dset_full = np.append(dset['y_train'], np.append(dset['y_test'], dset['y_val'], axis=0), axis=0)
 				result_full = np.append(train_predict, np.append(test_predict, val_predict, axis=0), axis=0)
-				ouput_series_file(dset_full, "ouput/dset_full.xyz")
-				ouput_series_file(dset_full, "ouput/result_full.xyz")
+				ouput_series_file(dset_full, "output/dset_full.xyz")
+				ouput_series_file(result_full, "output/result_full.xyz")
 
 				make_video_from_series(output_path="output/")
 
