@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 from neurallib.datasetManager.dataframes import *
@@ -5,6 +6,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from neurallib.Util import plot_scatter_matrix, plot_boxPlot
+
+
+import matplotlib.pyplot as plt
+import matplotlib.style
+import matplotlib as mpl
 
 class DataSet:
 	def __init__(self, path, headers, sampling=None, type='table', look_back=1):
@@ -31,12 +37,35 @@ class DataSet:
 			self.dataframe = self.concatenate_and_shuffle_dataset(df1, df2)
 
 		elif(type == 'series'):
-			main = main[main.tagid == 9]	#get specific tag
-			d_set_aux = {}
-			for key in self.headers:
-				d_set_aux[key] = list(map(lambda x: [x], main[key].values))
+			self.selection = self.__get_selection()
+			self.dataframe = []
+			self.scalers = []
 
-			self.dataframe, self.scaler = self.series_dataset(d_set_aux['x_pos'], look_back)
+			__min_size = 0
+
+			for tag in self.selection["tagids"]:
+				dataframe_slice = main[main.tagid == tag]
+				d_set_aux = []
+				for key in self.selection["keys"]:
+					list_to_append = list(dataframe_slice[key].values)
+					if __min_size == 0:
+						__min_size = len(list_to_append)
+
+					elif len(list_to_append) - __min_size > 0:
+						size = len(list_to_append)
+						for i in range(size-__min_size):
+							list_to_append.pop()
+
+					elif __min_size - len(list_to_append) > 0:
+						size = len(list_to_append)
+						for i in range(size-__min_size):
+							list_to_append = list_to_append.append(0)
+
+					list_to_append = list(map(lambda x: [x], list_to_append))
+					d_set_aux.append(list_to_append)
+				self.dataframe.append(d_set_aux)
+
+			self.dataframe, self.scalers = self.series_dataset(self.dataframe, look_back)
 
 	def __create_spl_dframe(self, a, b, c, d, e, f):
 		return {'X_train': a,
@@ -45,6 +74,11 @@ class DataSet:
 				'y_test': d,
 				'X_val': e,
 				'y_val': f}
+	
+	def __get_selection(self):
+		with open("./input/dset_select.txt") as f:
+			data = json.loads(f.read())
+			return data
 
 	def split_dataframe(self, df):
 		X = df.iloc[:, :-1].values
@@ -92,33 +126,84 @@ class DataSet:
 		return self.dataframe
 
 	def __create_lookback_frame(self, data, look_back):
+		shape = data.shape
 		dataX, dataY = [], []
-		for i in range(len(data)-look_back-1):
-			dataX.append(data[i:(i+look_back), 0])
-			dataY.append(data[i+look_back, 0])
-			
+		if(len(shape) == 2):
+			for i in range(len(data)-look_back-1):
+				dataX.append(data[i:(i+look_back), 0])
+				dataY.append(data[i+look_back, 0])
+		else:
+			for i in range(shape[0]):
+				a, b = self.__create_lookback_frame(data[i], look_back)
+				dataX.append(a)
+				dataY.append(b)
+
 		return np.array(dataX), np.array(dataY)
 
+	def __normalize_multidimentional_series(self, dataset, shape):
+		if(len(shape) == 2):
+			#return normalized
+			scaler = MinMaxScaler(feature_range=(0, 1))
+			dataset = scaler.fit_transform(dataset)
+			return np.array(dataset), scaler
+		else:
+			dataset_normalized = []
+			scalers = []
+			for i in range(shape[0]):
+				ret0, ret1 = self.__normalize_multidimentional_series(dataset[i], shape[1:])
+				dataset_normalized.append(ret0)
+				scalers.append(ret1)
+			return np.array(dataset_normalized), scalers
+
+	def __split_multidimentional_series(self, dataset, interval):
+		shape = dataset.shape
+		if(len(shape) == 2):
+			return np.array(dataset[interval[0]:interval[1]])
+		else:
+			dset_aux = []
+			for i in range(shape[0]):
+				dset_aux.append(self.__split_multidimentional_series(dataset[i], interval))
+			return np.array(dset_aux)
+
 	def series_dataset(self, dataset, look_back):
-		#normalize the dataset
-		scaler = MinMaxScaler(feature_range=(0, 1))
-		dataset = scaler.fit_transform(dataset)
+		dataset = np.array(dataset)
+		scalers = []
+		dataset_shape = dataset.shape
+		time_steps = dataset_shape[len(dataset_shape)-2:][0]
+
+		#normalize the dataset for each sample and feature
+		#dataset, scalers = self.__normalize_multidimentional_series(dataset, dataset_shape)
+
 		# split into train and test sets
-		train_size = int(len(dataset) * 0.50)
-		val_size = int(len(dataset) * 0.25)
-		test_size = int(len(dataset) * 0.25)
-		
-		train, val, test = dataset[0:train_size,:],\
-		dataset[train_size:train_size+val_size,:],\
-		dataset[train_size+val_size:len(dataset),:]
+		train_size = int(time_steps * 0.50)
+		test_size = int(time_steps * 0.25)
+		val_size = int(time_steps * 0.25)
 
+		train, test, val = self.__split_multidimentional_series(dataset, (0, train_size)),\
+		self.__split_multidimentional_series(dataset, (train_size,train_size+val_size)),\
+		self.__split_multidimentional_series(dataset, (train_size+val_size,time_steps))
+
+		# create lookback frame
 		X_train, y_train = self.__create_lookback_frame(train, look_back)
-		X_val, y_val = self.__create_lookback_frame(val, look_back)
 		X_test, y_test = self.__create_lookback_frame(test, look_back)
+		X_val, y_val = self.__create_lookback_frame(val, look_back)
 
-		# reshape input to be [samples, time steps, features]
-		X_train = np.reshape(X_train, (X_train.shape[0], 1, X_train.shape[1]))
-		X_val = np.reshape(X_val, (X_val.shape[0], 1, X_val.shape[1]))
-		X_test = np.reshape(X_test, (X_test.shape[0], 1, X_test.shape[1]))
+		# actually is getting only one player from dataset
+		X_train = X_train[0]
+		X_test = X_test[0]
+		X_val = X_val[0]
 
-		return self.__create_spl_dframe(X_train, y_train, X_val, y_val, X_test, y_test), scaler
+		y_train = y_train[0]
+		y_test = y_test[0]
+		y_val = y_val[0]
+
+		# reshape dataset
+		X_train = np.array([X_train[:,i] for i in range(X_train.shape[1])])
+		X_test = np.array([X_test[:,i] for i in range(X_test.shape[1])])
+		X_val = np.array([X_val[:,i] for i in range(X_val.shape[1])])
+
+		y_train = np.array([y_train[:,i] for i in range(y_train.shape[1])])
+		y_test = np.array([y_test[:,i] for i in range(y_test.shape[1])])
+		y_val = np.array([y_val[:,i] for i in range(y_val.shape[1])])
+
+		return self.__create_spl_dframe(X_train, y_train, X_test, y_test, X_val, y_val), scalers

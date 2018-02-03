@@ -32,9 +32,10 @@ class NeuralNetworkGenerator:
 			qtd_archs = f.readline()
 			for _ in range(0, int(qtd_archs)):
 				activation, regularization = f.readline().split(" ")
+				activation = None if(activation == 'None') else activation.replace('\n', '')
 				layers = f.readline().split(" ")
 				self.architectures.append({'regularization' : float(regularization),
-										   'activation' : activation.replace('\n', ''),
+										   'activation' : activation,
 				                           'layers' : list(map(int, layers))
 				                           })
 
@@ -57,14 +58,14 @@ class NeuralNetworkGenerator:
 		model = Sequential()
 		for i in range(len(arch['layers'])):
 			if i == 0:
-				model.add(LSTM(arch['layers'][i], input_shape=(1, self.__look_back)))
+				model.add(LSTM(arch['layers'][i], input_shape=(2, self.__look_back)))
 				i += 1
 
 			elif i < len(arch['layers']) - 1:
 				model.add(Dense(arch['layers'][i], activation=arch['activation'], activity_regularizer=l2(arch['regularization'])))
 
 			else:
-				model.add(Dense(arch['layers'][i], activation = 'sigmoid'))
+				model.add(Dense(arch['layers'][i]))
 		return model
 
 
@@ -77,7 +78,8 @@ class NeuralNetworkGenerator:
 			model.summary()
 
 			# Compile model.
-			model.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+			#model.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+			model.compile(loss = 'mean_squared_error', optimizer = 'adam')
 
 			# Get dataset variables.
 			dset = dataset.get_dataset()
@@ -109,26 +111,47 @@ class NeuralNetworkGenerator:
 				print("{metric:<18}{value:.4f}".format(metric = "AUROC:", value = roc_auc_score(dset['y_test'], y_pred)))
 			
 			elif(self.architecture == 'lstm'):
-				dset_full = np.append(dset['y_train'], np.append(dset['y_val'], dset['y_test']))
-				dset_full = np.reshape(dset_full, (dset_full.shape[0], 1))
 				# make predictions
 				train_predict = model.predict(dset['X_train'])				
-				val_predict = model.predict(dset['X_val'])
 				test_predict = model.predict(dset['X_test'])
+				val_predict = model.predict(dset['X_val'])
+
 				# invert predictions
-				train_predict = self.__scaler.inverse_transform(train_predict)
-				y_train = self.__scaler.inverse_transform([dset['y_train']])
-				val_predict = self.__scaler.inverse_transform(val_predict)
-				y_val = self.__scaler.inverse_transform([dset['y_val']])
-				test_predict = self.__scaler.inverse_transform(test_predict)
-				y_test = self.__scaler.inverse_transform([dset['y_test']])
+				# train_predict = self.__scaler.inverse_transform(train_predict)
+				# y_train = self.__scaler.inverse_transform([dset['y_train']])
+				# val_predict = self.__scaler.inverse_transform(val_predict)
+				# y_val = self.__scaler.inverse_transform([dset['y_val']])
+				# test_predict = self.__scaler.inverse_transform(test_predict)
+				# y_test = self.__scaler.inverse_transform([dset['y_test']])
+				y_train = dset['y_train']
+				y_test = dset['y_test']
+				y_val = dset['y_val']
 				# calculate root mean squared error
-				print("{metric:<18}{value:.4f}".format(metric = "Train Score RMSE:", value = math.sqrt(mean_squared_error(y_train[0], train_predict[:,0]))))
-				print("{metric:<18}{value:.4f}".format(metric = "Val Score RMSE:", value = math.sqrt(mean_squared_error(y_val[0], val_predict[:,0]))))
-				print("{metric:<18}{value:.4f}".format(metric = "Test Score RMSE:", value =math.sqrt(mean_squared_error(y_test[0], test_predict[:,0]))))
+				print("{metric:<18}{value:.4f}".format(metric = "Train Score RMSE:", value = math.sqrt(mean_squared_error(y_train, train_predict))))
+				print("{metric:<18}{value:.4f}".format(metric = "Val Score RMSE:", value = math.sqrt(mean_squared_error(y_val, val_predict))))
+				print("{metric:<18}{value:.4f}".format(metric = "Test Score RMSE:", value =math.sqrt(mean_squared_error(y_test, test_predict))))
 
-				plot_series(dset_full, train_predict, val_predict, test_predict, self.__look_back, self.__scaler)
+				# generate output and result files
+				dset_full = np.append(dset['y_train'], np.append(dset['y_test'], dset['y_val'], axis=0), axis=0)
+				result_full = np.append(train_predict, np.append(test_predict, val_predict, axis=0), axis=0)
+				ouput_series_file(dset_full, "output/dset_full.xyz")
+				ouput_series_file(result_full, "output/result_full.xyz")
 
+				make_video_from_series(output_path="output/")
+
+				for i in range(np.array(dset_full).shape[1]):
+					dset_iteration = [[d[i]] for d in dset_full]
+					train_iteration = [[d[i]] for d in train_predict]
+					test_iteration = [[d[i]] for d in test_predict]
+					val_iteration = [[d[i]] for d in val_predict]
+
+					plot_series(dset_iteration, train_iteration,\
+						test_iteration, val_iteration,\
+						self.__look_back, self.__scaler,\
+						dimension=dataset.selection["keys"][i])
+
+				
+						
 			x += 1
 
 		#self.store_test_scores()

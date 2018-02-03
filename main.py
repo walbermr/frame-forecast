@@ -10,7 +10,7 @@ def main():
 
 	dataset = DataSet(dset_path, headers, type='series', look_back=1)
 
-	nn = NeuralNetworkGenerator("./input/nn.txt", 'lstm', epochs=1000, batch_size=1000, scaler=dataset.scaler)
+	nn = NeuralNetworkGenerator("./input/nn.txt", 'lstm', epochs=1, batch_size=1000, scaler=dataset.scalers)
 	nn.evaluate(dataset)
 	return
 

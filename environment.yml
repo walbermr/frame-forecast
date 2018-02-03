@@ -7,11 +7,13 @@ dependencies:
 - pandas
 - scikit-learn
 - matplotlib
+- utils
 #- tensorflow-gpu
 - tensorflow
 - keras
 - seaborn
 - pip:
+  - ffmpeg
   - imbalanced-learn
 prefix: /anaconda3/envs/learn
 
