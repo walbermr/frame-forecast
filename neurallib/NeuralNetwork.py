@@ -137,7 +137,8 @@ class NeuralNetworkGenerator:
 				ouput_series_file(dset_full, "output/dset_full.xyz")
 				ouput_series_file(result_full, "output/result_full.xyz")
 
-				make_video_from_series(output_path="output/")
+				make_video_from_series(dset['y_train'].shape[0], dset['y_val'].shape[0],
+										dset['y_test'].shape[0], output_path="output/")
 
 				for i in range(np.array(dset_full).shape[1]):
 					dset_iteration = [[d[i]] for d in dset_full]

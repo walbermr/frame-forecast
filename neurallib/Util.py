@@ -13,6 +13,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import matplotlib.style
 
+ax = 0
 
 def extract_final_losses(history):
 	train_loss = history.history['loss']
@@ -142,30 +143,51 @@ def get_all_files(root_path, patterns):
         ret.append(filepath)
     return ret
 ##################################
-def render_frame(i, files, d):
-	d.set_data([f[0][i] for f in files],
-				[f[1][i] for f in files])
-	return d,
+def render_frame(i, data, points, message_text, train_size, validation_size, test_size):
+	# if(i < train_size):
+	# 	message_text.set_text('Training @sample = ' + str(i))
+	# elif(i >= train_size and i < train_size+validation_size):
+	# 	message_text.set_text('Validation @sample = ' + str(i))
+	# elif(i >= train_size+validation_size):
+	# 	message_text.set_text('Test @sample = ' + str(i))
 
-def make_video_from_series(output_path=""):
+	for j,p in enumerate(points):
+		p.set_data(data[j][0][i], data[j][1][i])
+	return points
+
+def make_video_from_series( train_size, validation_size, test_size, output_path=""):
 	# Simulation Path
+	global ax
 	print("Creating video...")
 	path = output_path
 	output_name = output_path + 'series_result.mp4'
 	files = get_all_files(path, "*.xyz")
 
 	Writer = animation.writers['ffmpeg']
-	writer = Writer(fps=200, bitrate=1200)
+	writer = Writer(fps=200, bitrate=1600)
+
+	mpl.style.use('default')
+	fig, ax = plt.subplots()
+	ax = plt.axes(xlim=(0, 105), ylim=(0, 68))
+	ax.grid(False)
 
 	files = [open(f) for f in files]
 	data = np.array([json.loads(f.read()) for f in files])
-	fig1 = plt.figure()
-	ax = plt.axes(xlim=(0, 105), ylim=(0, 68))
 
-	d, = ax.plot([d[0][0] for d in data], [d[1][0] for d in data], 'r.')
+	message_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+	
+	points=[]
+	for index in range(data.shape[1]):
+		if(index % 2) == 0:
+			pobj, = ax.plot(0, 0, 'bo')
+		else:	
+			pobj, = ax.plot(0, 0, 'rx')
+		points.append(pobj)
 
-	line_ani = animation.FuncAnimation(fig1, render_frame, frames=data.shape[2], fargs=(data, d), 
-											interval=5, blit=True, save_count=0, repeat=False)
+	line_ani = animation.FuncAnimation(fig, render_frame, frames=data.shape[2],
+											fargs=(data, points, message_text, train_size,
+											validation_size, test_size), interval=5, blit=True,
+											save_count=0, repeat=False)
 
-	#plt.show()
-	line_ani.save(output_name, writer=writer)
+	plt.show()
+	#line_ani.save(output_name, writer=writer)
